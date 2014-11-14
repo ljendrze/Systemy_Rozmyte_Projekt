@@ -1,5 +1,7 @@
 function [ output, mfunvalues ] = evaluateFuzzyModel( prevInputs, prevOutputs )
 
+   % Teraz będzie na komórkach.
+
    global fuzzyModel;
    global tanks;
    realInputValue = prevInputs(1);
