@@ -2,7 +2,7 @@
 % w zadaniu 13. w projekcie z przedmiotu Sztuczna Inteligencja w Automatyce.
 
 % Zmienna typu string z nazwą pliku do którego zostaną zapisane kolejne pomiary.
-filename = 'wynik_symulacji.mat';
+filename = 'obiekt_model_liniowy_i_rozmyty.mat';
 
 % Inicjalizacja komórki zawierającej wyniki kolejnych symulacji.
 simulations = cell(0);
@@ -19,20 +19,15 @@ clear simulations;
 %    - units - zawiera jednostki każdej z wielkości opisujących obiekt
 global tanks;
 
-global fuzzyModel;
-
 % Wczytywanie pamametrów obiektu. Zmienna wczytywana z tego pliku jest
 % zmienną globalną 'tanks'.
 load( 'tanksParameters.mat' );
 
-% Wczytywanie modelu rozmytego. Jego parametry są zapisane w formie struktury,
-% w której każdy model lokalny stanowi element oznaczony poprzez 'mX', gdzie X
-% jest wartością wejścia do obiektu dla której został pozyskany.
-% Warto zauważyć, że wejściem do modelu rozmytego jest wyjście obiektu
-% z poprzedniej iteracji, tak więc rozmywana jest wartość wyjścia obiektu, 
-% nie jego wejście.
-% load( 'fuzzyModel.mat' );
-load( 'fuzzyModel_gbell.mat' );
+% Wczytywanie modelu rozmytego. Jego parametry są zapisane w formie macierzy
+% komórkowej w której każdy model lokalny stanowi kolejny element macierzy 
+% (właściwie wektora). 
+importedData = load( 'modele/trapezoidFuzzyModel.mat' );
+fuzzyModel = importedData.fuzzyModel;
 
 load( 'linearModel.mat' );
 
@@ -47,7 +42,7 @@ load( 'linearModel.mat' );
 % wektor czasu składał się z kolejnych chwil próbkowania modelu regulatora.
 % Procedura ode45 posługując się zmiennym parametrem kroku zadba o to, żeby
 % pomiary obiektu były dokładne.
-dt = 5; % sekundy
+dt = 1; % sekundy
 
 % Czas symulacji, wektor z kolejnymi chwilami.
 time = [ 0 : dt : 1000 ];
@@ -65,18 +60,6 @@ for i = 1 : length( inputValues )
    end
 end
 
-% Trajektorie zmiennej zakłócającej obiektu - strumienia dopływającej wody.
-% Kolumny macierzy są kolejnymi trajektoriami zmieniającego się strumienia
-% zakłócającego wody dopływającej.
-disturbanceValues = [ 0.5, 0.6, 0.8, 0.9, 1, 1.1, 1.2, 1.3, 1.4, 1.5 ];
-disturbanceTrajectories = tanks.sstate.FD * ones( simulationLength, ...
-                                            length( disturbanceValues ) );
-for i = 1 : length( disturbanceValues )
-   for j = 100 / dt : simulationLength
-      disturbanceTrajectories(j,i) = disturbanceValues(i)*disturbanceTrajectories(j,i);
-   end
-end
-
 % Wejście obiektu jest opóźnione o czas 'tau = 60s', dlatego konieczne jest
 % wprowadzenie bufora opóźniającego wpływ sygnału wejściowego.
 % Bufor ten jest wykorzystywany równolegle przez wszystkie modele.
@@ -85,7 +68,7 @@ inputBuffer = tanks.sstate.F1*ones( tanks.const.tau / dt, 1 );
 % inputBuffer musi zostać zresetowany przed każdą kolejną dużą iteracją
 % symulacji
 
-%% ZMIENNE OBIEKTU RZECZYWISTEGO
+% ZMIENNE OBIEKTU RZECZYWISTEGO
 % Zmienne obiektu rzeczywistego opisanego układem nieliniowych równań
 % różniczkowych. Wymaganymi zmiennymi do symulacji jest wektor zmiennych stanu
 % i wartość wyjścia modelu.
