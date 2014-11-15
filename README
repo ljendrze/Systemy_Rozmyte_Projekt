@@ -1,0 +1,6 @@
+Poniższy plik zawiera opis wszystkich plików wchodzących w skład projektu:
+
+symulacjaZLiniowym.m
+   Skrypt służy do symulacji obiektu w postaci równań różniczkowych i ciągłego
+   obiektu zlinearyzowanego w podanym punkcie pracy.
+
