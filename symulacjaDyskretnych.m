@@ -119,8 +119,8 @@ for i = 1 : length( inputValues )
 
    % Zmienne modelu opisanego równaniem różnicowym uzyskanym dla liniowego
    % modelu dyskretnego z okresem dyskretyzacji równym Tp.
-   tanksOutputPastDIGITAL = [ 0; 0 ];
-   tanksInputPastDIGITAL = [ 0; 0 ];
+   tanksOutputPastDIGITAL = zeros( size( linearModel.A ) );
+   tanksInputPastDIGITAL = zeros( size( linearModel.B ) );
    tanksOutputDIGITAL = 0;
 
    % Wektory wynikowe pojedynczych symulacji, do zapisu do pliku.
@@ -163,14 +163,15 @@ for i = 1 : length( inputValues )
 
       [ tout, xout ] = ode45( @linearTanksFunction, t, tanksStateCONTINUOUS, opts, uLin, zLin );
       tanksStateCONTINUOUS = xout( size(xout, 1), : );
-      tanksOutputCONTINUOUS = linearModel.C * tanksStateCONTINUOUS';
+      tanksOutputCONTINUOUS = linearModel.C_ss * tanksStateCONTINUOUS';
 
       if mod(j,Tp) == 0
-         tanksOutputDIGITAL = sum( linearModel.b .* tanksOutputPastDIGITAL ) + ...
-            sum( linearModel.c .* tanksInputPastDIGITAL );
-         tanksOutputPastDIGITAL = [ tanksOutputDIGITAL; tanksOutputPastDIGITAL(1) ];
-         tanksInputPastDIGITAL = [ inputBuffer( length(inputBuffer) ) - tanks.sstate.F1;...
-            tanksInputPastDIGITAL(1) ];
+         tanksOutputDIGITAL = sum( linearModel.A .* tanksOutputPastDIGITAL ) + ...
+            sum( linearModel.B .* tanksInputPastDIGITAL );
+         tanksOutputPastDIGITAL = [ tanksOutputDIGITAL; ...
+            tanksOutputPastDIGITAL( 1 : length(tanksOutputPastDIGITAL) - 1 ) ];
+         tanksInputPastDIGITAL = [ inputTrajectory(j) - tanks.sstate.F1;...
+            tanksInputPastDIGITAL( 1 : length(tanksInputPastDIGITAL) -1 ) ];
       end
 
       u = inputBuffer( length(inputBuffer) );

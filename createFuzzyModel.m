@@ -89,20 +89,20 @@ for j = 1 : length( controlValues )
    % Linearyzacja modelu nieliniowego w określonym punkcie pracy (u,y).
    % Elementy macierzy A,B,C zostały obliczone analitycznie i do wzorów
    % podstawiane są wartości odpowiadające punktom pracy.
-   A = [ 
+   A_ss = [ 
       -tanks.const.alpha1*0.5*sqrt( 1 / ( tanks.const.A1*x0(1) ) ),...
       0;
       tanks.const.alpha1*0.5*sqrt( 1 / ( tanks.const.A1*x0(1) ) ),...
       -0.25*tanks.const.alpha2*( tanks.const.C2*( x0(2) )^3 )^(-1/4);
    ];
-   B = [ 1 ; 0 ];
-   C = [ 0, 0.5*( 1 / sqrt( tanks.const.C2*x0(2) ) ); ];
+   B_ss = [ 1 ; 0 ];
+   C_ss = [ 0, 0.5*( 1 / sqrt( tanks.const.C2*x0(2) ) ); ];
 
    % Odpowiednie elementy macierzy modelu liniowego zostają przetworzone do postaci
    % transmitancyjnej. Poniższe wzory także zostały wyznaczone analitycznie dla obiektu.
-   num = [ A(2,1)*B(1,1)*C(1,2) ];
-   den = [ 1, ( - A(1,1) - A(2,2) ), A(1,1)*A(2,2) ];
-   tf_sys = tf( num, den );
+   num = [ A_ss(2,1)*B_ss(1,1)*C_ss(1,2) ];
+   den = [ 1, ( - A_ss(1,1) - A_ss(2,2) ), A_ss(1,1)*A_ss(2,2) ];
+   tf_sys = tf( num, den, 'InputDelay', tanks.const.tau );
 
    % Dyskretyzacja transmitancji ciągłej. Wykorzystywana jest metoda zero-order-hold,
    % i czas dyskretyzacji Tp podany na początku skryptu. Elementy num_d i den_d
@@ -120,17 +120,30 @@ for j = 1 : length( controlValues )
 
    % Zakłada się, że transmitancja jest transmitancją właściwą, tj. 
    % rank(num) < rand(den)   
-   bb = zeros( length(den_d)-1, 1 );
-   for i = 1 : length(den_d)-1
-      bb(i) = - den_d(i+1) / den_d(1);
+   b = zeros( length(den_d) - 1, 1 );
+   for i = 1 : length(den_d) - 1
+      b(i) = - den_d(i+1) / den_d(1);
    end
-   b{j} = bb;
+   A{j} = b;
 
-   cc = zeros( length(num_d)-1, 1 );
-   for i = 1 : length(num_d)-1
-      cc(i) = num_d(i+1) / den_d(1);
+   c = zeros( length(num_d) - 1 + tf_discrete.InputDelay, 1 );
+   for i = tf_discrete.InputDelay + 1 : length(num_d) - 1 + tf_discrete.InputDelay;
+      c(i) = num_d( i - tf_discrete.InputDelay + 1 ) / den_d(1);
    end
-   c{j} = cc;
+   B{j} = c;
+
+   % Pozyskiwanie odpowiedzi skokowej modelu lokalnego.
+   inputPast = zeros( size( B{j} ) );
+   outputsPast = zeros( length( A{j} ), 1 );
+   
+   D = 500;
+   
+   inputPast(1) = 1;
+   for i = 1 : D
+      S{j}(i) = sum( A{j} .* outputsPast ) + sum( B{j} .* inputPast );
+      outputsPast = [ S{j}(i); outputsPast(1) ];
+      inputPast = [ 1 ; inputPast( 1 : length(inputPast) - 1 ) ];
+   end
 end
 
 % Typy funkcji przynależności poprzedników rozmytych.
@@ -145,11 +158,11 @@ mfparams = {...
    [ outputs{4}; outputs{5}; 140; 140 ];...
 };
 
-% Tworzenie struktury modleu rozmytego do zapisu. Każda z struktur modeli
+% Tworzenie struktury modelu rozmytego do zapisu. Każda z struktur modeli
 % lokalnych zawiera poniższe parametry:
-%   - b - wektor wielomianu odpowiadającego poprzednim wartościom wyjść
+%   - A - wektor wielomianu odpowiadającego poprzednim wartościom wyjść
 %         w równaniu różnicowym;
-%   - c - wektor wielomianu odpowiadającego poprzednim wartościom wejść
+%   - B - wektor wielomianu odpowiadającego poprzednim wartościom wejść
 %         w równaniu różnicowym;
 %   - u0 - wartość wejścia z punktu pracy pozyskanego modelu lokalnego;
 %   - x0 - wektor stanu z punktu pracy pozyskanego modelu lokalnego;
@@ -157,7 +170,7 @@ mfparams = {...
 %   - MFType - rodzaj funkcji przynależności (string);
 %   - MFParams - wektor parametrów funkcji przynależności
 for j = 1 : length(controlValues)
-   fuzzyModel{j} = struct( 'b', b{j}, 'c', c{j}, ...
+   fuzzyModel{j,1} = struct( 'A', A{j}, 'B', B{j}, 'S', S{j},...
                            'u0', inputs{j}, 'y0', outputs{j}, 'x0', tanksStates{j}, ...
                            'MFType', mftypes{j}, 'MFParams', mfparams{j} );
 end

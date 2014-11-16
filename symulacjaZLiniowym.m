@@ -161,7 +161,7 @@ for i = 1 : length( inputValues )
 
       [ tout, xout ] = ode45( @linearTanksFunction, t, tanksStateLINEAR, opts, uLin, zLin );
       tanksStateLINEAR = xout( size(xout, 1), : );
-      tanksOutputLINEAR = linearModel.C * tanksStateLINEAR';
+      tanksOutputLINEAR = linearModel.C_ss * tanksStateLINEAR';
 
       u = inputBuffer( length(inputBuffer) );
       z = disturbanceTrajectory(j);

@@ -8,6 +8,6 @@ function dxdt = linearTanksFunction( time, state, input, disturbance )
 global linearModel;
 
 dxdt = [ ...
-   linearModel.A(1,1)*state(1) + linearModel.A(1,2)*state(2) + linearModel.B(1)*input;
-   linearModel.A(2,1)*state(1) + linearModel.A(2,2)*state(2) + linearModel.B(2)*input;
+   linearModel.A_ss(1,1)*state(1) + linearModel.A_ss(1,2)*state(2) + linearModel.B_ss(1)*input;
+   linearModel.A_ss(2,1)*state(1) + linearModel.A_ss(2,2)*state(2) + linearModel.B_ss(2)*input;
 ];
