@@ -1,4 +1,4 @@
-function [ output, weights, nn_weights ] = evaluateFuzzyModelGPC( fuzzyModel, x, inputPast, outputPast )
+function [ localOutputs, weights, nn_weights ] = evaluateFuzzyModelGPC( fuzzyModel, x, inputPast, outputPast )
    % Model rozmyty powinien być macierzą komórkową struktur, w której będą
    % przetwarzane kolejne modele lokalne. Modele lokalne mają postać 
    % znormalizowanej odpowiedzi skokowej.
@@ -33,7 +33,7 @@ function [ output, weights, nn_weights ] = evaluateFuzzyModelGPC( fuzzyModel, x,
 
    weights = zeros( size(fuzzyModel) );
    nn_weights = zeros( size(fuzzyModel) );
-   output = 0;
+   localOutputs = zeros( length(fuzzyModel), 1);
    
    % Przetwarzanie wszystkich modeli lokalnych
    for i = 1 : length( fuzzyModel )
@@ -49,12 +49,10 @@ function [ output, weights, nn_weights ] = evaluateFuzzyModelGPC( fuzzyModel, x,
    weights = weights / sum(weights);
 
    for i = 1 : length( fuzzyModel )
-
-      output = output + weights(i)*( ...
+      localOutputs(i) = ...
          sum( fuzzyModel{i}.A .* ( outputPast - fuzzyModel{i}.y0 ) ) + ...
          sum( fuzzyModel{i}.B .* ( inputPast - fuzzyModel{i}.u0 ) ) + ...
-         fuzzyModel{i}.y0 ...
-      );
+         fuzzyModel{i}.y0;
    end
 
 end
