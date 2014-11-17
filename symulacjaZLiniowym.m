@@ -67,7 +67,7 @@ load( 'modele/linearModel.mat' );
 dt = 1; % sekundy
 
 % Czas symulacji, wektor z kolejnymi chwilami.
-time = [ 0 : dt : 1000 ];
+time = [ 0 : dt : 3000 ];
 simulationLength = length(time);
 
 % Trajektorie zmiennej wejściowej obiektu - strumienia dopływającej wody.

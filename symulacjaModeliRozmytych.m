@@ -4,7 +4,7 @@
 addpath('customToolbox/fuzzy');
 
 % Zmienna typu string z nazwą pliku do którego zostaną zapisane kolejne pomiary.
-filename = 'porownanie_liniowego_i_dyskretnego.mat';
+filename = 'porownanie_rozmytych.mat';
 
 % Inicjalizacja komórki zawierającej wyniki kolejnych symulacji.
 trajectoriesPlotArguments = {...
@@ -12,18 +12,22 @@ trajectoriesPlotArguments = {...
            'PlotType', 'stairs', ...
            'LineStyle', '-', ...
            'Color', [0; 0; 1] ), ...
-   struct( 'Legend', 'nieliniowy', ...
+   struct( 'Legend', 'obiekt', ...
            'LineStyle', '-', ...
            'PlotType', 'plot', ...
            'Color', [0; 0; 1] ), ...
-   struct( 'Legend', 'liniowy', ...
+   struct( 'Legend', 'trapezowy', ...
            'LineStyle', '-', ...
            'PlotType', 'plot', ...
            'Color', [1; 0; 0] ), ...
-   struct( 'Legend', 'rozmyty', ...
+   struct( 'Legend', 'dzwonowy', ...
            'LineStyle', '-', ...
            'PlotType', 'plot', ...
            'Color', [0; 1; 0] ) ...
+   struct( 'Legend', 'zoptymalizowany', ...
+           'LineStyle', '-', ...
+           'PlotType', 'plot', ...
+           'Color', [1; 0; 1] ), ...
 };
 
 % TODO
@@ -60,9 +64,11 @@ load( 'tanksParameters.mat' );
 % komórkowej w której każdy model lokalny stanowi kolejny element macierzy 
 % (właściwie wektora). 
 importedData = load( 'modele/trapezoidFuzzyModel.mat' );
-fuzzyModel = importedData.fuzzyModel;
-
-load( 'modele/linearModel.mat' );
+trapezoidFuzzyModel = importedData.fuzzyModel;
+importedData = load( 'modele/gbellFuzzyModel.mat' );
+gbellFuzzyModel = importedData.fuzzyModel;
+importedData = load( 'modele/fuzzyModelOptimized.mat' );
+optimizedFuzzyModel = importedData.fuzzyModel;
 
 % Krok symulacji. Obiekt opisany jest zestawem nieliniowych, a później
 % liniowych ciągłych równań różniczkowych, dlatego niezbędne dla solwerów
@@ -117,25 +123,30 @@ for i = 1 : length( inputValues )
    % Bufor ten jest wykorzystywany równolegle przez model nieliniowy.
    inputBuffer = tanks.sstate.F1*ones( tanks.const.tau / dt, 1 );
 
-   % Zmienne modelu opisanego układem liniowych równań różnicowych.
-   % Wymaganymi zmiennymi do symulacji jest wektor zmiennych stanu
-   % i wartość wyjścia modelu, a także wektory przechowujące informacje
-   % o przeszłych wartościach wejścia i wyjścia.
-   tanksOutputLINEAR = 0;
-   tanksInputPastLINEAR = zeros( length(linearModel.B), 1 ); % 14x1
-   tanksOutputPastLINEAR = zeros( length(linearModel.A), 1 ); % 2x1
+   % Zmienne modelu rozmytego z trapezowymi funkcjami przynależności: wektor przeszłych
+   % wartości wejścia i przeszłych wartości wyjścia.
+   tanksOutputTRAPEZOID = tanks.sstate.h2;
+   tanksInputPastTRAPEZOID = tanks.sstate.F1 * ones( length(trapezoidFuzzyModel{1}.B), 1 ); % 14x1
+   tanksOutputPastTRAPEZOID = tanks.sstate.h2 * ones( length(trapezoidFuzzyModel{1}.A), 1 ); % 2x1
 
-   % Zmienne modelu rozmytego: wektor przeszłych wartości wejścia i przeszłych
-   % wartości wyjścia.
-   tanksOutputFUZZY = tanks.sstate.h2;
-   tanksInputPastFUZZY = tanks.sstate.F1 * ones( length(fuzzyModel{1}.B), 1 ); % 14x1
-   tanksOutputPastFUZZY = tanks.sstate.h2 * ones( length(fuzzyModel{1}.A), 1 ); % 2x1
+   % Zmienne modelu rozmytego z dzwonowymi funkcjami przynależności: wektor przeszłych 
+   % wartości wejścia i przeszłych wartości wyjścia.
+   tanksOutputGBELL = tanks.sstate.h2;
+   tanksInputPastGBELL = tanks.sstate.F1 * ones( length(gbellFuzzyModel{1}.B), 1 ); % 14x1
+   tanksOutputPastGBELL = tanks.sstate.h2 * ones( length(gbellFuzzyModel{1}.A), 1 ); % 2x1
+
+   % Zmienne modelu rozmytego z dzwonowymi funkcjami przynależności i zoptymalizowanymi 
+   % parametrami: wektor przeszłych wartości wejścia i przeszłych wartości wyjścia.
+   tanksOutputOPTIMIZED = tanks.sstate.h2;
+   tanksInputPastOPTIMIZED = tanks.sstate.F1 * ones( length(optimizedFuzzyModel{1}.B), 1 ); % 14x1
+   tanksOutputPastOPTIMIZED = tanks.sstate.h2 * ones( length(optimizedFuzzyModel{1}.A), 1 ); % 2x1
    
    % Wektory wynikowe pojedynczych symulacji, do zapisu do pliku.
    plotInput = zeros( simulationLength, 1 );
    plotOutputREAL = zeros( simulationLength, 1 );
-   plotOutputLINEAR = tanks.sstate.h2 * ones( simulationLength, 1 );
-   plotOutputFUZZY = zeros( simulationLength, 1 );
+   plotOutputTRAPEZOID = zeros( simulationLength, 1 );
+   plotOutputGBELL = zeros( simulationLength, 1 );
+   plotOutputOPTIMIZED = zeros( simulationLength, 1 );
 
    inputTrajectory = inputTrajectories(:,i);
    disturbanceTrajectory = tanks.sstate.FD*ones( size( inputTrajectory ) );
@@ -167,32 +178,41 @@ for i = 1 : length( inputValues )
       z = disturbanceTrajectory(j);
       inputBuffer = [ inputTrajectory(j); inputBuffer(1 : length(inputBuffer)-1 ) ];
    
-      tanksOutputLINEAR = sum( linearModel.A .* tanksOutputPastLINEAR ) + ...
-         sum( linearModel.B .* tanksInputPastLINEAR );
-      tanksOutputPastLINEAR = [ tanksOutputLINEAR; ...
-         tanksOutputPastLINEAR( 1 : length(tanksOutputPastLINEAR) - 1 ) ];
-      tanksInputPastLINEAR = [ inputTrajectory(j) - tanks.sstate.F1;...
-         tanksInputPastLINEAR( 1 : length(tanksInputPastLINEAR) -1 ) ];
+      [ localOutputs, weights ] = evaluateFuzzyModelGPC( trapezoidFuzzyModel, ...
+         tanksOutputTRAPEZOID, tanksInputPastTRAPEZOID, tanksOutputPastTRAPEZOID );
+      tanksOutputTRAPEZOID = sum( weights .* localOutputs );
+      tanksInputPastTRAPEZOID = [ inputTrajectory(j); ...
+         tanksInputPastTRAPEZOID( 1 : length(tanksInputPastTRAPEZOID) - 1 ) ];
+      tanksOutputPastTRAPEZOID = [ tanksOutputTRAPEZOID; tanksOutputPastTRAPEZOID(1) ];
 
-      [ localOutputs, weights ] = evaluateFuzzyModelGPC( fuzzyModel, ...
-         tanksOutputFUZZY, tanksInputPastFUZZY, tanksOutputPastFUZZY );
-      tanksOutputFUZZY = sum( weights .* localOutputs );
-      tanksInputPastFUZZY = [ inputTrajectory(j); ...
-         tanksInputPastFUZZY( 1 : length(tanksInputPastFUZZY) - 1 ) ];
-      tanksOutputPastFUZZY = [ tanksOutputFUZZY; tanksOutputPastFUZZY(1) ];
+      [ localOutputs, weights ] = evaluateFuzzyModelGPC( gbellFuzzyModel, ...
+         tanksOutputGBELL, tanksInputPastGBELL, tanksOutputPastGBELL );
+      tanksOutputGBELL = sum( weights .* localOutputs );
+      tanksInputPastGBELL = [ inputTrajectory(j); ...
+         tanksInputPastGBELL( 1 : length(tanksInputPastGBELL) - 1 ) ];
+      tanksOutputPastGBELL = [ tanksOutputGBELL; tanksOutputPastGBELL(1) ];
+
+      [ localOutputs, weights ] = evaluateFuzzyModelGPC( optimizedFuzzyModel, ...
+         tanksOutputOPTIMIZED, tanksInputPastOPTIMIZED, tanksOutputPastOPTIMIZED );
+      tanksOutputOPTIMIZED = sum( weights .* localOutputs );
+      tanksInputPastOPTIMIZED = [ inputTrajectory(j); ...
+         tanksInputPastOPTIMIZED( 1 : length(tanksInputPastOPTIMIZED) - 1 ) ];
+      tanksOutputPastOPTIMIZED = [ tanksOutputOPTIMIZED; tanksOutputPastOPTIMIZED(1) ];
 
       plotInput(j) = inputTrajectory(j); 
       plotOutputREAL(j) = sqrt( tanksStateREAL(2) / tanks.const.C2 );
-      plotOutputLINEAR(j) = plotOutputLINEAR(j) + tanksOutputLINEAR;
-      plotOutputFUZZY(j) = tanksOutputFUZZY;
+      plotOutputTRAPEZOID(j) = tanksOutputTRAPEZOID;
+      plotOutputGBELL(j) = tanksOutputGBELL;
+      plotOutputOPTIMIZED(j) = tanksOutputOPTIMIZED;
       
    end
    load( filename, 'simulations' );
    rows = size( simulations, 1 );
    simulations{rows+1, 1} = plotInput;
    simulations{rows+1, 2} = plotOutputREAL;
-   simulations{rows+1, 3} = plotOutputLINEAR;
-   simulations{rows+1, 4} = plotOutputFUZZY;
+   simulations{rows+1, 3} = plotOutputTRAPEZOID;
+   simulations{rows+1, 4} = plotOutputGBELL;
+   simulations{rows+1, 5} = plotOutputOPTIMIZED;
    save( filename, 'simulations' );
 
    fprintf('\n\n');

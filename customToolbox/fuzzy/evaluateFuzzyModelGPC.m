@@ -42,7 +42,7 @@ function [ localOutputs, weights, nn_weights ] = evaluateFuzzyModelGPC( fuzzyMod
       elseif( strcmp( fuzzyModel{i}.MFType, 'trapmf' ) == 1)
          weights(i) = evaluateTrapezoidMF( x, fuzzyModel{i}.MFParams );
       elseif( strcmp( fuzzyModel{i}.MFType, 'gbellmf' ) == 1)
-         weights(i) = evaluateBellMF( x, fuzzyModel{i}.MFParams );
+         weights(i) = evaluateGBellMF( x, fuzzyModel{i}.MFParams );
       end
    end
    nn_weights = weights;

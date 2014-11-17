@@ -171,9 +171,9 @@ for i = 3 : size( simulations, 1 )
    labels{i-2} = num2str( tmp );
 end
 
-addpath('customToolbox');
+addpath('customToolbox/plotting');
 colors = distinguishable_colors( length(labels) );
-rmpath('customToolbox');
+rmpath('customToolbox/plotting');
 
 figure(1);
 hold on;
@@ -181,8 +181,11 @@ grid on;
 for i = 3 : size( simulations, 1 )
    plot( time, simulations{i,2}, ...
          'Color', colors(i-2,:),...
-         'LineStyle', simulations{2,2}.LineStyle );
+         'LineStyle', simulations{2,2}.LineStyle, ...
+         'LineWidth', 2 );
 end
+xlabel('czas [s]');
+ylabel('h_2 [cm]');
 legend( labels, 'Location', 'Best');
 
 figure(2);
@@ -191,6 +194,9 @@ grid on;
 for i = 3 : size( simulations, 1 )
    stairs( time, simulations{i,1}, ...
            'Color', colors(i-2,:),...
-           'LineStyle', simulations{2,1}.LineStyle );
+           'LineStyle', simulations{2,1}.LineStyle, ...
+           'LineWidth', 2 );
 end
+xlabel('czas [s]');
+ylabel('F_D [cm^3/s]');
 legend( labels, 'Location', 'Best');

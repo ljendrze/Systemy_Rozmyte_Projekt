@@ -68,9 +68,8 @@ dt = 1;
 Tp = 5;
 
 % Czas symulacji, wektor z kolejnymi chwilami.
-time = [ 0 : dt : 1000 ];
+time = [ 0 : dt : 3000 ];
 simulationLength = length(time);
-% simulationLength = 100;
 
 % Trajektorie zmiennej wejściowej obiektu - strumienia dopływającej wody.
 % Kolumny macierzy są kolejnymi trajektoriami zmieniającego się strumienia
@@ -79,7 +78,7 @@ inputValues = [ 0.55, 0.7, 0.85, 1, 1.15, 1.3, 1.45 ];
 inputTrajectories = tanks.sstate.F1 * ones( simulationLength, ...
                                             length( inputValues ) );
 for i = 1 : length( inputValues )
-   for j = 10 / dt : simulationLength
+   for j = 100 / dt : simulationLength
       inputTrajectories(j,i) = inputValues(i)*inputTrajectories(j,i);
    end
 end
